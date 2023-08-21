@@ -1,0 +1,15 @@
+Metadata-Version: 2.1
+Name: transformerhub
+Version: 0.0.1
+Summary: A comprehensive model hub for Transformers
+Home-page: https://github.com/BubbleJoe-BrownU/TransformerHub
+Author: Jiayu Zheng
+Author-email: jiayuzheng99@gmail.com
+License: MIT
+Keywords: transformer,bert,gpt
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.9
+Description-Content-Type: text/markdown
