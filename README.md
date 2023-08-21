@@ -26,10 +26,10 @@ This repository features a list of designs:
 ## Current Progress
 
 
-| Architecture | Implemented | Trained | Evaluation |
+| Architecture | Implemented | Trained | Evaluated |
 | --- | --- | --- | --- |
 | Seq2Seq | No | No | No |
-| Decoder-only | Yes | No | No |
+| Decoder-only | Yes | Yes | No |
 | Encoder-only | Yes | No | No |
 
 
