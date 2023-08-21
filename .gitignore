@@ -1,0 +1,7 @@
+.ipynb_checkpoints
+*.ipynb
+*.txt
+.DS_Store
+*.pt
+*.tar
+.bin

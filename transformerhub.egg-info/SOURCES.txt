@@ -1,0 +1,7 @@
+README.md
+setup.py
+transformerhub.egg-info/PKG-INFO
+transformerhub.egg-info/SOURCES.txt
+transformerhub.egg-info/dependency_links.txt
+transformerhub.egg-info/requires.txt
+transformerhub.egg-info/top_level.txt
