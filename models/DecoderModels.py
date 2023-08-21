@@ -133,6 +133,9 @@ class MiniGPT(nn.Module):
         """
         generate a sequence of max_new_tokens given an initial sequence
         """
+        if max_new_tokens + seq.shape[1] > self.ctx_length:
+            print(f"Length of the sequence to be generated : {max_new_tokens + seq.shape[1]} is larger than the max context length {self.ctx_length}, result might be inconsistent!")
+        
         for i in range(max_new_tokens):
             # trim the sequence input if the length is greater then ctx_length
             seq_input = seq if seq.size(1) <= self.ctx_length else seq[:, -self.ctx_length:]
