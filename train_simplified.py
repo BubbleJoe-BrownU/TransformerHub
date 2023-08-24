@@ -108,7 +108,7 @@ def get_batch(split):
     ix = torch.randint(len(data) - ctx_length, (batch_size,))
     x = torch.stack([torch.from_numpy((data[i:i+ctx_length]).astype(np.int64)) for i in ix])
     y = torch.stack([torch.from_numpy((data[i+1:i+1+ctx_length]).astype(np.int64)) for i in ix])
-    if device_type == 'cuda':
+    if device == 'cuda':
         # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
         x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
     else:
