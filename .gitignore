@@ -5,6 +5,6 @@ __pycache__
 .DS_Store
 *.pt
 *.tar
-.bin
+*.bin
 transformerhub.egg-info
 out-*

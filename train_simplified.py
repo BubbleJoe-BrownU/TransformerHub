@@ -152,16 +152,17 @@ if init_from == 'scratch':
     model_args['vocab_size'] = meta_vocab_size if meta_vocab_size is not None else 50304
     # gptconfg = GPTConfig(**model_args)
     model = MiniGPT(**model_args)
+    
 elif init_from == 'resume':
     print(f"Resuming training from {out_dir}")
-    ckpt_path = os.path.join(outdir, 'ckpt.pt')
+    ckpt_path = os.path.join(out_dir, 'ckpt.pt')
     checkpoint = torch.load(ckpt_path, map_location=device)
     checkpoint_model_args = checkpoint['model_args']
 
     for k in ['num_layers', 'num_heads', 'embed_size', 'ctx_length', 'bias', 'vocab_size']:
         model_args[k] = checkpoint_model_args[k]
     # create the model
-    gptconf = GPTConfig(**model_args)
+#     gptconf = GPTConfig(**model_args)
     model = MiniGPT(**model_args)
     # model = GPT(gptconf)
     state_dict = checkpoint['model']
@@ -191,20 +192,7 @@ optimizer = model.configure_optimizers(
     weight_decay, learning_rate, (beta1, beta2), device_type
 )
 if init_from == "resume":
-    print(f"Resuming traning from {out_dir}")
-    ckpt_path = os.path.join(out_dir, 'ckpt.pt')
-    checkpoint = torch.load(ckpt_path, map_location=device)
-    checkpoint_model_args = checkpoint['model_args']
-
-    # force these config attributes to be equal otherwise we cannot even resume training
-    # the rest of the attributes (e.g. dropout) can stay as desired from command line
-    for k in ['num_layers', 'num_heads', 'n_embd', 'ctx_length', 'bias', 'vocab_size']:
-        model_args[k] = checkpoint_model_args[k]
-    gptconf = GPTConfig(**model_args)
-    
-    
     optimizer.load_state_dict(checkpoint['optimizer'])
-    
 checkpoint = None # free up memory
 
 # compile the model
@@ -283,6 +271,7 @@ while True:
                 }
                 print(f"saving checkpoint to {out_dir}")
                 torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
+                
     if iter_num == 0 and eval_only:
         break
 
@@ -296,8 +285,12 @@ while True:
         X, Y = get_batch('train')
         # backward pass, with gradient scaling if training in fp16
         scaler.scale(loss).backward()
+        
     # clip the gradient
+    # avoid gradient explosion destroying our model
     if grad_clip != 0.0:
+        # unscale the gradient before any operaon on gradients
+        # implitcitly unscaled in step
         scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
     # step the optimizer and scaler
