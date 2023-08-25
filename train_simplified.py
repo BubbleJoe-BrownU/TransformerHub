@@ -175,6 +175,15 @@ elif init_from == 'resume':
     model.load_state_dict(state_dict)
     iter_num = checkpoint['iter_num']
     best_val_loss = checkpoint['best_val_loss']
+elif init_from.startswith('gpt2'):
+    print(f"Initializing from OpenAI GPT-2 weights: {init_from}")
+    override_args = dict(dropout=dropout)
+    # initialize from OpenAI GPT-2 weights
+    model = GPT.from_pretrained(init_from, override_args)
+    # read off the created config params, so we can store them into checkpoint correctly
+    for k in ["num_layers", "num_heads", "embed_size", "ctx_length", "bias", "vocab_size"]:
+        model_args[k] = geattr(model.config, k)
+        
 
 
 # crop down the model block size if desired, using model surgery
