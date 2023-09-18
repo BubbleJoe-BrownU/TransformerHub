@@ -226,8 +226,8 @@ class PositionEmbedding(nn.Module):
 
     def forward(self, x):
         # This step should be completed before the function call
-        # length = x.shape[1]
-        # pos = torch.arange(length).view(-1, 1)
+        length = x.shape[1]
+        pos = torch.arange(length).view(-1, 1)
         position_embedding = torch.sin(pos*self.factor + self.offset)
         return position_embedding
         

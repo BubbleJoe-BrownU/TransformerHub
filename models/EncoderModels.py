@@ -44,4 +44,7 @@ class TaskMLP(nn.Module):
         )
     def forward(self, x):
         return self.net(x)
-        
+
+class VisionTransformer(nn.Module):
+    def __init__(self):
+        super().__init__()
