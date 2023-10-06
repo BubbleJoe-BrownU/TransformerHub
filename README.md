@@ -26,11 +26,14 @@ This repository features a list of designs:
 ## Current Progress
 
 
-| Architecture | Implemented | Trained | Evaluated |
+| Model | Implemented | Trained | Evaluated |
 | --- | --- | --- | --- |
-| Seq2Seq | No | No | No |
-| Decoder-only | Yes | Yes | No |
-| Encoder-only | Yes | No | No |
+| Transformer | No | No | No |
+| GPT | No | No | No |
+| BERT | Yes | Yes | No |
+| ViT | Yes | No | No |
+| MAE | No | No | No |
+| CLIP | No | No | No |
 
 
 
