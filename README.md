@@ -29,10 +29,10 @@ This repository features a list of designs:
 
 | Model | Implemented | Trained | Evaluated |
 | --- | --- | --- | --- |
-| Transformer | No | No | No |
-| GPT | No | No | No |
-| BERT | Yes | Yes | No |
-| ViT | Yes | No | No |
+| Transformer | ✅ | No | No |
+| GPT | ✅ | No | No |
+| BERT | ✅ | Yes | No |
+| ViT | ✅ | No | No |
 | MAE | No | No | No |
 | CLIP | No | No | No |
 
