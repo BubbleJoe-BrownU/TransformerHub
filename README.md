@@ -25,6 +25,7 @@ This repository features a list of designs:
 
 ## Current Progress
 
+**Currently working on implementing DINO, a variant of ViT trained in a self-supervised manner**
 
 | Model | Implemented | Trained | Evaluated |
 | --- | --- | --- | --- |
