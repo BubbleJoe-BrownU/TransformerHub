@@ -3,7 +3,7 @@ This repository aims to implement different forms of transformer model, includin
 
 These models are not meant to be the states of the arts on any tasks. Instead, they come with the purpose of training myself with advanced programming skills and also provide references to people who share the love of deep learning and machine intelligence.
 
-
+This work is inspired by, and would not be possible without the open-source repos of NanoGPT, ViT, MAE, CLIP, and OpenCLIP. A huge thanks to them for open-sourcing their models!
 
 This repository also maintains a paperlist of recent progresses in transformer models.
 ## Features
@@ -25,12 +25,17 @@ This repository features a list of designs:
 
 ## Current Progress
 
+**Currently working on implementing DINO, a variant of ViT trained in a self-supervised manner**
 
-| Architecture | Implemented | Trained | Evaluated |
+| Model | Implemented | Trained | Evaluated |
 | --- | --- | --- | --- |
-| Seq2Seq | No | No | No |
-| Decoder-only | Yes | Yes | No |
-| Encoder-only | Yes | No | No |
+| Transformer | ✅ | No | No |
+| GPT | ✅ | No | No |
+| BERT | ✅ | Yes | No |
+| ViT | ✅ | No | No |
+| MAE | No | No | No |
+| CLIP | No | No | No |
+
 
 
 **DISCLAIMER**: Because of the popularity and versatility of Transformers, there will be a lot of course assignments related to implementing part of or the entire Transformer models. This repository was developed purely for self-training purpose, and could well serve as a reference for implementing a Transformer model. But directly copying from this repo is strictly prohibited and is a violation of code of conduct for most academic institutes.
