@@ -31,16 +31,8 @@ def get_data_CIFAR(subset, data_path=data_path):
     data_meta = f"{data_path}/cifar-10-batches-py/batches.meta"
     data_files = [f"{data_path}/cifar-10-batches-py/{file}" for file in data_files]
 
-    # TODO #1:
-    #   Pull in all of the data into cifar_dict.
-    #   Check the cifar website above for the API to unpickle the files.
-    #   Then, you can access the components i.e. 'data' via cifar_dict[b"data"].
-    #   If data_files contains multple entries, make sure to unpickle all of them
-    #   and concatenate the results together into a single training set.
-
     data = []
     labels = []
-#     cifar_dict[b"data"] = np.empty((0, 3072))
     for file in data_files:
         with open(file, 'rb') as fo:
             batch_dict = pickle.load(fo, encoding='bytes')
@@ -49,6 +41,7 @@ def get_data_CIFAR(subset, data_path=data_path):
         labels += list(batch_dict[b"labels"])
     images = np.array(data)
     labels = np.array(labels)
+    print(labels[:10])
     
     # read in the meta data, which is the binary label names
     label_names_b = None
@@ -58,35 +51,21 @@ def get_data_CIFAR(subset, data_path=data_path):
     # extract the label info and decode it from binary string to utf-8 string
     label_names = np.array(list(map(lambda x : x.decode("utf-8"), label_names_b)))
 
-    # TODO #2:
-    #   Currently, the variable "label" is a list of integers between 0 and 9,
-    #     with 0 meaning "airplane", 1 meaning "automobile" and so on.
-    #   You should change the label with more descriptive names, given in the
-    #   Numpy array variable "label_names" (remember that label_names contains
-    #   binary strings and not UTF-8 strings right now)
-    #   This variable "label" should be a Numpy array, not a Python list.
-    real_label = label_names[label]
-    label = real_label
-    
-    # TODO #3:
-    #   You should reshape the input image np.array to (num, width, height, channels).
-    #   Currently, it is a 2D array in the shape of (images, flattened pixels)
-    #   You should reshape it into (num, 3, 32, 32), because the pickled images are in
-    #     three channels(RGB), and 32 pixels by 32 pixels.
-    #   However, we want the order of the axis to be in (num, width, height, channels),
-    #     with the RGB channel in the last dimension.
-    #   We want the final shape to be (num, 32, 32, 3)
     
     # reshape all images from (1, 1024) to (3, 32, 32)
-    image = image.reshape(-1, 3, 32, 32)
-    # transpose all images from (3, 32, 32) to (32, 32, 3) so the RGB channel is the last dimension
-    image = np.transpose(image, (0, 2, 3, 1))
-
-    # DO NOT normalize the images by dividing them with 255.0.
-    # With the MNIST digits, we did normalize the images, but not with CIFAR,
-    # because we will be using the pre-trained ResNet50 model, which requires
-    # the pixel values to be unsigned integer values between 0 and 255.
+    images = images.reshape(-1, 3, 32, 32)
+    # transform to channel-last if needed
+    # image = np.transpose(image, (0, 2, 3, 1))
+    images = images.astype(np.float32) /255.
 
     return images, labels, label_names
 
 
+if __name__ == "__main__":
+    # for debug use
+    images, labels, label_names = get_data_CIFAR(subset="train")
+    print(len(images))
+    print(label_names)
+    images, labels, label_names = get_data_CIFAR(subset="test")
+    print(len(images))
+    print(label_names)

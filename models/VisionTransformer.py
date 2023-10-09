@@ -1,33 +1,13 @@
-
+import sys
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 import torchvision
 
+sys.path.insert(0, "../data/cifar10/")
+from prepare_cifar10 import get_data_CIFAR
 from modules import EncoderLayer, LearnablePositionEmbedding
 
-
-class PatchExtractor(nn.Module):
-    def __init__(self, patch_size=16):
-        super().__init__()
-        self.patch_size = patch_size
-
-    def forward(self, inputs):
-        # expected input shape [batch_size, channels, height, width]
-        batch_size, channels, height, width = inputs.shape
-
-        assert height % self.patch_size == 0 and width % self.patch_size == 0, \
-            f"Input height ({height}) and width ({width}) must be divisible by patch size ({self.patch_size})"
-        
-        num_patches_h = height // self.patch_size
-        num_patches_w = width // self.patch_size
-        num_patches = num_patches_h * num_patches_w
-
-        # patches = inputs.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size).permute(0, 2, 3, 1, 4, 5).contiguous().view(batch_size, num_patches, -1)
-        patches = inputs.reshape(batch_size, channels, num_patches_h, self.patch_size, num_patches_w, self.patch_size)
-        patches = torch.einsum('nchpwq->nhwcpq', patches).reshape(batch_size, num_patches, -1)
-        # the returning patches has shape (batch_size, 14*14, 16*16*3)
-        return patches
     
 class InputEmbedding(nn.Module):
 
@@ -61,7 +41,7 @@ class InputEmbedding(nn.Module):
 
 
 class MiniViT(nn.Module):
-    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers):
+    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_classes):
         super().__init__()
         assert img_size % patch_size == 0, f"image size ({img_size}) is not divisible by patch_size ({patch_size})"
         self.patch_size = patch_size
@@ -73,8 +53,13 @@ class MiniViT(nn.Module):
         self.position_embedding = LearnablePositionEmbedding(self.num_patches+1, embed_size)
         
         self.encoder = nn.ModuleList([EncoderLayer(embed_size, num_heads, self.num_patches+1, dropout=0.3) for _ in range(num_layers)])
+        self.mlp_head = nn.Sequential(
+            nn.Linear(embed_size, 2*embed_size),
+            nn.LeakyReLU(),
+            nn.Linear(2*embed_size, num_classes)
+        )
 
-    def forward(self, inputs):
+    def encoder_forward(self, inputs):
         batch_size = inputs.shape[0]
         patches = self.patchify(inputs)
         input_seq = self.projection(patches)
@@ -86,6 +71,11 @@ class MiniViT(nn.Module):
         for layer in self.encoder:
             embedding = layer(embedding)
         return embedding
+
+    def forward(self, inputs):
+        embedding = self.encoder_forward(inputs)
+        cls_embedding = embedding[:, 0, :]
+        return self.mlp_head(cls_embedding)
         
 
     def patchify(self, inputs):
@@ -100,10 +90,67 @@ class MiniViT(nn.Module):
         patches = patches.reshape(batch_size, num_patches_h*num_patches_w, self.patch_size**2 *3)
         return patches
 
+def generate_batches(batch_size=128, split="train", data_path="../data/cifar10"):
+    images, labels, _ = get_data_CIFAR(split, data_path=data_path)
+    len_dataset = len(images)
+    # shuffle the dataset
+    indices = torch.randperm(len_dataset)
+    for i in range(0, len_dataset, batch_size):
+        end = min(len_dataset, i+batch_size)
+        yield images[indices[i:end]], labels[indices[i:end]]
+    
+def train(model, optimizer, max_epochs, batch_size, device):
+    
+
+    for epoch in range(max_epochs):
+        dataloader = generate_batches(batch_size=batch_size, split="train")
+        losses = []
+        for inputs, targets in dataloader:
+            inputs = torch.from_numpy(inputs).to(device)
+            targets = torch.from_numpy(targets).to(device)
+            logits = model(inputs)
+            loss = F.cross_entropy(logits, targets)
+            loss.backward()
+            losses.append(loss.item())
+            optimizer.step()
+            optimizer.zero_grad()
+        print(f"Training epoch: {epoch}, Training loss: {sum(losses)/len(losses)}")
+
+        # evaluate the model every two epochs or at the last epoch
+        if ((epoch+1) % 2 == 0) or (epoch+1 == max_epochs):
+            dataloader = generate_batches(batch_size=batch_size, split="test")
+            
+            losses = []
+            num_corrects = 0
+            total_num = 10_000
+            for inputs, targets in dataloader:
+                inputs = torch.from_numpy(inputs).to(device)
+                targets = torch.from_numpy(targets).to(device)
+                with torch.no_grad():
+                    logits = model(inputs)
+                    loss = F.cross_entropy(logits, targets)
+                num_corrects = (logits.argmax(-1) == targets).sum()
+                losses.append(loss.item())
+            print(f"Evaluation at epoch: {epoch}, Evaluation loss: {sum(losses)/len(losses)}, Evaluation accuracy: {num_corrects/total_num*100:.2f}%")
+            
+        
+
+    
 
 if __name__ == "__main__":
-    device = 'cuda' if torch.cuda.is_available() else "cpu"
-    inputs = torch.randn(10, 3, 224, 224).to(device)
-    vit = MiniViT(224, 16, 768, 2, 6).to(device)
-    output = vit(inputs)
-    print(output.shape)
+    device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16'
+    ptdtype = {
+        'float32': torch.float32,
+        'bfloat16': torch.bfloat16,
+        'float16': torch.float16
+    }[dtype]
+    to_compile = True if (torch.__version__.startswith("2") and device=="cuda") else False
+    
+    torch.manual_seed(42)
+    torch.backends.cuda.matmul.allow_tf32 = True # allow tf32 on matmul
+    torch.backends.cuda.allow_tf32 = True # allow tf32 on cudnn
+    print(device)
+    model = MiniViT(32, 16, 768, 2, 6, 10).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    train(model, optimizer, 5, 256, device)

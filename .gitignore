@@ -8,3 +8,4 @@ __pycache__
 *.bin
 transformerhub.egg-info
 out-*
+cifar-10-batches-py
