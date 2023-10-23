@@ -218,11 +218,10 @@ class PositionEmbedding(nn.Module):
     def __init__(self, embed_size):
         super().__init__()
         depth = int(embed_size / 2)
-        self.factor = torch.cat([torch.arange(0, embed_size, 2).view(-1, 1), torch.arange(0, embed_size, 2).view(-1, 1)], dim=-1).view(-1)
-        self.factor = self.factor.to(torch.float16)/embed_size
-        self.factor = 1 / 1000 ** self.factor
+        self.factor = 1.0 / (10000 ** (torch.repeat_interleave(torch.arange(depth), 2, dim=-1) / embed_size))
         # cos(x) = sin(x + pi/2) so we only use sine function
-        self.offset = torch.cat([torch.zeros(depth, 1), torch.ones(depth, 1)*math.pi/2], dim=-1).view(-1)
+        self.offset = torch.zeros([embed_size])
+        self.offset[1::2] = math.pi/2
 
     def forward(self, x):
         # This step should be completed before the function call
@@ -255,35 +254,58 @@ class LayerNorm(nn.Module):
     def forward(self, input):
         return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
 
+def fixed_pos_embedding(x):
+    seq_len, dim = x.shape
+    inv_freq = 1.0 / (10000 ** (torch.arange(0, dim) / dim))
+    sinusoid_inp = torch.einsum("i,j->ij", torch.arange(0, seq_len, dtype=torch.float), inv_freq).to(x)
+    return torch.sin(sinusoid_inp), torch.cos(sinusoid_inp)
 
-# class RotaryPositionEmbedding(nn.Module):
-#     """A rotary position embedding (RoPE), which encode position information of tokens with a rotation matrix that naturally incorporates explicit relative position dependency.
-#     Introduced by Su et. al. in https://arxiv.org/abs/2104.09864
+def rotate_every_two(x):
+    x1 = x[:, :, ::2]
+    x2 = x[:, :, 1::2]
+    x = torch.stack([-x2, x1], dim=-1)
+    return x.flatten(-2)
 
-#     Here's a good explanation of the advantages of RoPE, https://nn.labml.ai/transformers/rope/index.html#:~:text=This%20is%20an%20implementation%20of,incorporates%20explicit%20relative%20position%20dependency.
-#     """
-#     def __init__(self, length: int = 10_000, base: int):
-#         self.length = length
-#         self.embed_size = embed_size
+def duplicaet_interleave(m):
+    dim0 = m.shape[0]
+    m = m.view(-1, 1)
+    m = m.repeat(1, 2)
+    m = m.view(dim0, -1)
+    return m
 
-#         self.cos_cached = None
-#         self.sin_cached = None
+def apply_rotary_pos_emb(x, sin, cos, scale=1):
+    sin, cos = map(lambda t: duplicaet_interleave(t*scale), (sin, cos))
+    return (x * cos) + (rotate_every_two(x) * sin)
 
-#     def _build_cache(self, x: torch.Tensor):
-#         if self.cos_cached is not None and x.shape[0] <= self.cos_cached.shape[0]:
-#             return
-#         seq_len = x.shape[0]
-#         theta = 1. / (self.length ** (torch.arange(0, self.embed_size, 2).float()/self/embed_size))
-#         seq_idx = torch.arange(seq_len).float().to(x.device)
-#         idx_theta = torch.einsum('n,d->nd', seq_idx, theta)
-#         idx_theta2 = torch.cat([idx_theta, idx_theta]. dim=1)
-#         self.cos_cached = idx_theta2.cos()[:, None, None, :]
-#         self.sin_cached = idx_theta.sin()[:, None, None, :]
-#     def _neg_half(self, x: torch.Tensor):
+class XPos(nn.Module):
+    """
+    Extrapolable Position Embedding
+    https://github.com/microsoft/torchscale/blob/881d03079da7b0c52ba0a473c70faac47042efc8/torchscale/component/xpos_relative_position.py#L32
+    """
+    def __init__(self, ctx_length, embed_size, scale_base=512):
+        super().__init__()
+        self.embed_size = embed_size
+        self.ctx_length = ctx_length
+        self.scale_base = scale_base
+        self.register_buffer(
+            "scale", (torch.arange(0, embed_size, 2) + 0.4*embed_size) / (1.4*embed_size)
+        )
 
+    def forward(self, x, offset=0, downscale=False):
+        length = x.shape[1]
+        min_pos = -(length + offset) // 2
+        max_pos = length + min_pos + offset
+        scale = self.scale ** torch.arange(min_pos, max_pos, 1).to(self.scale).div(self.scale_base)[:, None]
+        sin, cos = fixed_pos_embedding(scale)
 
-#     def forward(self, x: torch.Tensor):
-#         self._build_cache(x)
-#         x_ropem, x_pass = x[..., :self, d]
+        if scale.shape[0] > length:
+            scale = scale[-length:]
+            sin = sin[-length:]
+            cos = cos[-length:]
         
-    
+        if downscale:
+            scale = 1/scale
+        
+        x = apply_rotary_pos_emb(x, sin, cos, scale)
+        return x
+
