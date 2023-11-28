@@ -12,15 +12,17 @@ This repository features a list of designs:
   - Encoder-only
   - Decoder-only
   - Encoder-Decoder
-  - Unified
+  - Unified (In Progress)
 - Attention Modules:
-  - Unmasked Attention
-  - Causal masked Attention
-  - Prefix Causal Attention
+  - Unmasked Attention (Transformer, BERT)
+  - Causal masked Attention (Transformer, GPT)
+  - Prefix Causal Attention (T5)
+  - Sliding-Window Attention (Mistral)
 - Position Embedding:
-  - Fixed Position Embedding
-  - Learnable Position Embedding
-  - Rotary Position Embedding
+  - Fixed Position Embedding (Transformer)
+  - Learnable Position Embedding (Transformer, BERT)
+  - Rotary Position Embedding (Roformer)
+  - Extrapolable Position Embedding (Length-Extrapolatable Transformer)
 
 
 ## Current Progress
