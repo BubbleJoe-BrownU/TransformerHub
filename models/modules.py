@@ -127,6 +127,32 @@ class MultiHeadCrossAttention(nn.Module):
         output = torch.cat([h(x, context) for h in self.heads], dim=-1)
         output = self.resid_dropout(self.projection(output))
         return output
+    
+def _make_sliding_window_causal_mask(
+    input_ids_shape: torch.Size,
+    dtype: torch.dtype,
+    device: torch.device,
+    past_key_values_length: int = 0,
+    sliding_window: int = 4096,
+):
+    """
+    Make causal mask used for sliding window attention
+    """
+    bsz, tgt_len = input_ids_shape
+
+    tensor = torch.full(
+        (tgt_len, tgt_len),
+        fill_value=1,
+        device=device,
+    )
+    mask = torch.tril(tensor, diagonal=0)
+    # make the mask banded to account for sliding window
+    mask = torch.triu(mask, diagonal=-sliding_window)
+    mask = torch.log(mask).to(dtype)
+
+    if past_key_values_length > 0:
+        mask = torch.cat([torch.zeros(tgt_len, past_key_values_length, dtype=dtype, device=device), mask], dim=-1)
+    return mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len + past_key_values_length)
 
 class FeedForward(nn.Module):
     '''Feedforward network in Transformer layer
@@ -308,4 +334,5 @@ class XPos(nn.Module):
         
         x = apply_rotary_pos_emb(x, sin, cos, scale)
         return x
+
 
